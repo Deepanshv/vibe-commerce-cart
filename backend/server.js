@@ -267,7 +267,7 @@ setupDatabase()
     app.listen(PORT, () => {
       console.log(`Backend server running on http://localhost:${PORT}`);
       console.log("CORS enabled for:", [
-        "https://vibe-commerce-cart-5v56wotwn-deepanshvs-projects.vercel.app",
+        "https://vibe-commerce-cart.vercel.app",
         "http://localhost:3000",
       ]);
     });
