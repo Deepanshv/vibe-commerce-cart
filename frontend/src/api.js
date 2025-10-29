@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Create a single, configured "instance" of axios
 const api = axios.create({
-  baseURL: "http://localhost:5001/api",
+  baseURL: process.env.REACT_APP_API_URL || "http://localhost:5001/api",
 });
 
 // All API functions are exported from here
