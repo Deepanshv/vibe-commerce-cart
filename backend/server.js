@@ -11,18 +11,23 @@ let db;
 
 async function setupDatabase() {
   try {
+    // Use in-memory SQLite for render.com deployment
     db = await sqlite.open({
-      filename: "vibe-commerce.db",
+      filename:
+        process.env.NODE_ENV === "production" ? ":memory:" : "vibe-commerce.db",
       driver: sqlite3.Database,
     });
 
+    // UPDATED: Added imageUrl column
     await db.exec(`
       CREATE TABLE IF NOT EXISTS products (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
-        price REAL NOT NULL
+        price REAL NOT NULL,
+        imageUrl TEXT NOT NULL DEFAULT ''
       );
     `);
+
     await db.exec(`
       CREATE TABLE IF NOT EXISTS cart (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -39,17 +44,42 @@ async function setupDatabase() {
     if (productCount.count === 0) {
       console.log("Seeding database with initial products...");
       const seedProducts = [
-        { name: "Classic Tee", price: 25.0 },
-        { name: "Leather Jacket", price: 150.0 },
-        { name: "Slim-Fit Jeans", price: 60.0 },
-        { name: "Running Shoes", price: 80.0 },
-        { name: "Beanie Hat", price: 15.0 },
+        {
+          name: "Classic Tee",
+          price: 2499,
+          imageUrl:
+            "https://storage.googleapis.com/gemini-dev-resources/ecom-a/tee.jpg",
+        },
+        {
+          name: "Leather Jacket",
+          price: 14999,
+          imageUrl:
+            "https://storage.googleapis.com/gemini-dev-resources/ecom-a/jacket.jpg",
+        },
+        {
+          name: "Slim-Fit Jeans",
+          price: 4999,
+          imageUrl:
+            "https://storage.googleapis.com/gemini-dev-resources/ecom-a/jeans.jpg",
+        },
+        {
+          name: "Running Shoes",
+          price: 7999,
+          imageUrl:
+            "https://storage.googleapis.com/gemini-dev-resources/ecom-a/shoes.jpg",
+        },
+        {
+          name: "Beanie Hat",
+          price: 1499,
+          imageUrl:
+            "https://storage.googleapis.com/gemini-dev-resources/ecom-a/beanie.jpg",
+        },
       ];
       const stmt = await db.prepare(
-        "INSERT INTO products (name, price) VALUES (?, ?)"
+        "INSERT INTO products (name, price, imageUrl) VALUES (?, ?, ?)"
       );
       for (const product of seedProducts) {
-        await stmt.run(product.name, product.price);
+        await stmt.run(product.name, product.price, product.imageUrl);
       }
       await stmt.finalize();
       console.log("Database seeded!");
@@ -60,7 +90,17 @@ async function setupDatabase() {
   }
 }
 
-app.use(cors());
+// Configure CORS with specific options
+app.use(
+  cors({
+    origin: [
+      "https://vibe-commerce-cart-5v56wotwn-deepanshvs-projects.vercel.app",
+      "http://localhost:3000",
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 // GET /api/products
@@ -211,103 +251,27 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Log environment configuration
+console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
 console.log("Setting up database...");
+console.log(
+  `Database: ${
+    process.env.NODE_ENV === "production"
+      ? "In-Memory SQLite"
+      : "Local SQLite File"
+  }`
+);
+
 setupDatabase()
   .then(() => {
     app.listen(PORT, () => {
       console.log(`Backend server running on http://localhost:${PORT}`);
+      console.log("CORS enabled for:", [
+        "https://vibe-commerce-cart-5v56wotwn-deepanshvs-projects.vercel.app",
+        "http://localhost:3000",
+      ]);
     });
   })
   .catch((err) => {
     console.error("Failed to start server:", err);
   });
-
-// ... keep all your code above this ...
-
-async function setupDatabase() {
-  try {
-    db = await sqlite.open({
-      filename: "vibe-commerce.db",
-      driver: sqlite3.Database,
-    });
-
-    // UPDATED: Added imageUrl column
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS products (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        price REAL NOT NULL,
-        imageUrl TEXT NOT NULL 
-      );
-    `);
-
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS cart (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        userId INTEGER NOT NULL,
-        productId INTEGER NOT NULL,
-        name TEXT NOT NULL,
-        price REAL NOT NULL,
-        qty INTEGER NOT NULL,
-        FOREIGN KEY(productId) REFERENCES products(id)
-      );
-    `);
-
-    // --- Seed the database ---
-    const productCount = await db.get("SELECT COUNT(*) as count FROM products");
-
-    if (productCount.count === 0) {
-      console.log("Seeding database with initial products...");
-
-      // UPDATED: New seed data with INR prices and images
-      const seedProducts = [
-        {
-          name: "Classic Tee",
-          price: 2499,
-          imageUrl:
-            "https://storage.googleapis.com/gemini-dev-resources/ecom-a/tee.jpg",
-        },
-        {
-          name: "Leather Jacket",
-          price: 14999,
-          imageUrl:
-            "https://storage.googleapis.com/gemini-dev-resources/ecom-a/jacket.jpg",
-        },
-        {
-          name: "Slim-Fit Jeans",
-          price: 4999,
-          imageUrl:
-            "https://storage.googleapis.com/gemini-dev-resources/ecom-a/jeans.jpg",
-        },
-        {
-          name: "Running Shoes",
-          price: 7999,
-          imageUrl:
-            "https://storage.googleapis.com/gemini-dev-resources/ecom-a/shoes.jpg",
-        },
-        {
-          name: "Beanie Hat",
-          price: 1499,
-          imageUrl:
-            "https://storage.googleapis.com/gemini-dev-resources/ecom-a/beanie.jpg",
-        },
-      ];
-
-      // UPDATED: Statement now includes imageUrl
-      const stmt = await db.prepare(
-        "INSERT INTO products (name, price, imageUrl) VALUES (?, ?, ?)"
-      );
-      for (const product of seedProducts) {
-        // UPDATED: Pass the imageUrl to the database
-        await stmt.run(product.name, product.price, product.imageUrl);
-      }
-      await stmt.finalize();
-      console.log("Database seeded!");
-    } else {
-      console.log("Database already has products.");
-    }
-  } catch (error) {
-    console.error("Error setting up database:", error);
-    process.exit(1); // Exit if DB setup fails
-  }
-}
