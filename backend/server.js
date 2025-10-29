@@ -91,16 +91,31 @@ async function setupDatabase() {
 }
 
 // Configure CORS with specific options
+// CORS: allow only whitelisted origins and mirror the incoming origin back
+const allowedOrigins = [
+  "https://vibe-commerce-cart.vercel.app",
+  "http://localhost:3000",
+  // keep the render domain here if you access the API directly from the same origin
+  "https://vibe-commerce-cart.onrender.com",
+];
+
 app.use(
   cors({
-    origin: [
-      "https://vibe-commerce-cart-5v56wotwn-deepanshvs-projects.vercel.app",
-      "http://localhost:3000",
-    ],
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps, curl, server-to-server)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        return callback(null, true);
+      } else {
+        console.warn("Blocked CORS request from origin:", origin);
+        return callback(new Error("Not allowed by CORS"));
+      }
+    },
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   })
 );
+
 app.use(express.json());
 
 // GET /api/products
@@ -266,10 +281,7 @@ setupDatabase()
   .then(() => {
     app.listen(PORT, () => {
       console.log(`Backend server running on http://localhost:${PORT}`);
-      console.log("CORS enabled for:", [
-        "https://vibe-commerce-cart.vercel.app",
-        "http://localhost:3000",
-      ]);
+      console.log("CORS enabled for:", allowedOrigins);
     });
   })
   .catch((err) => {
